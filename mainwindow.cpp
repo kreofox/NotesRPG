@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "QTextEdit"
+#include "QPushButton"
 #include "QHBoxLayout"
 #include "QVBoxLayout"
 #include "QWidget"
@@ -9,6 +10,7 @@
 #include <QListWidget>
 #include <QDir>
 #include <QInputDialog>
+#include <QIcon>
 
 //#include "ui_mainwindow.h"
 
@@ -30,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     fileList -> setMaximumHeight(220);
     mainLayout -> addWidget(fileList);
 
+
     //Right text edit
 
     QVBoxLayout *rightLayout = new QVBoxLayout();
@@ -37,6 +40,17 @@ MainWindow::MainWindow(QWidget *parent)
     editor -> setPlaceholderText(" ");
     editor -> setFont(QFont("Courier new", 12));
     rightLayout -> addWidget(editor);
+
+    //new file
+    QHBoxLayout *btnLayout = new QHBoxLayout();
+    QPushButton *btnNew = new QPushButton(" ", this);
+    btnLayout->addWidget(btnNew);
+    btnNew->setIcon(QIcon(":/img/img/open-folder.png"));
+    btnNew->setIconSize(QSize(32,32));
+
+
+
+    rightLayout->addLayout(btnLayout);
 
     mainLayout->addLayout(rightLayout);
 
