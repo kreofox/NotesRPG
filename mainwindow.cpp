@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     editor -> setFont(QFont("Courier new", 12));
     rightLayout -> addWidget(editor);
 
+    //BUTTON
     //new file
     QHBoxLayout *btnLayout = new QHBoxLayout();
     QPushButton *btnNew = new QPushButton(" ", this);
