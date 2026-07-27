@@ -47,7 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     QPushButton *btnNew = new QPushButton(" ", this);
     btnNew->setFixedSize(45,45);
     btnLayout->addWidget(btnNew);
-    btnNew->setIcon(QIcon(":/img/img/open-folder.png"));
+    btnNew->setIcon(QIcon(":/img/img/folder.png"));
     btnNew->setIconSize(QSize(28,28));
     btnNew->setStyleSheet(
         "QPushButton {"
@@ -56,10 +56,23 @@ MainWindow::MainWindow(QWidget *parent)
         "   text-align: center;"
         "}"
         );
+    btnLayout->addWidget(btnNew);
 
     //save file
 
-
+    QPushButton *btnSave = new QPushButton(" ", this);
+    btnNew->setFixedSize(45,45);
+    btnLayout->addWidget(btnNew);
+    btnSave->setIcon(QIcon(":/img/img/save.png"));
+    btnSave->setIconSize(QSize(28,28));
+    btnSave->setStyleSheet(
+        "QPushButton {"
+        "   padding: 0px;"
+        "   border: none;"
+        "   text-align: center;"
+        "}"
+        );
+    btnLayout->addWidget(btnSave);
 
     rightLayout->addLayout(btnLayout);
 
