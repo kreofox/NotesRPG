@@ -45,9 +45,19 @@ MainWindow::MainWindow(QWidget *parent)
     //new file
     QHBoxLayout *btnLayout = new QHBoxLayout();
     QPushButton *btnNew = new QPushButton(" ", this);
+    btnNew->setFixedSize(45,45);
     btnLayout->addWidget(btnNew);
     btnNew->setIcon(QIcon(":/img/img/open-folder.png"));
-    btnNew->setIconSize(QSize(32,32));
+    btnNew->setIconSize(QSize(28,28));
+    btnNew->setStyleSheet(
+        "QPushButton {"
+        "   padding: 0px;"
+        "   border: none;"
+        "   text-align: center;"
+        "}"
+        );
+
+    //save file
 
 
 
