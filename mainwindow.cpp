@@ -29,8 +29,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     //Left list notes
     QListWidget *fileList = new QListWidget(central);
-    fileList -> setMaximumHeight(220);
-    mainLayout -> addWidget(fileList);
+    //fileList -> setMaximumHeight(280);
+    mainLayout -> addWidget(fileList, 1);
 
 
     //Right text edit
@@ -46,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *btnLayout = new QHBoxLayout();
     QPushButton *btnNew = new QPushButton(" ", this);
     btnNew->setFixedSize(45,45);
-    btnLayout->addWidget(btnNew);
+    //btnLayout->addWidget(btnNew);
     btnNew->setIcon(QIcon(":/img/img/folder.png"));
     btnNew->setIconSize(QSize(28,28));
     btnNew->setStyleSheet(
@@ -56,13 +56,13 @@ MainWindow::MainWindow(QWidget *parent)
         "   text-align: center;"
         "}"
         );
-    btnLayout->addWidget(btnNew);
+
 
     //save file
 
     QPushButton *btnSave = new QPushButton(" ", this);
-    btnNew->setFixedSize(45,45);
-    btnLayout->addWidget(btnNew);
+    btnSave->setFixedSize(45,45);
+    //btnLayout->addWidget(btnSave);
     btnSave->setIcon(QIcon(":/img/img/save.png"));
     btnSave->setIconSize(QSize(28,28));
     btnSave->setStyleSheet(
@@ -72,11 +72,21 @@ MainWindow::MainWindow(QWidget *parent)
         "   text-align: center;"
         "}"
         );
+
+
+
+
+
+
+    btnLayout->addWidget(btnNew);
     btnLayout->addWidget(btnSave);
+
+
+
 
     rightLayout->addLayout(btnLayout);
 
-    mainLayout->addLayout(rightLayout);
+    mainLayout->addLayout(rightLayout, 3);
 
     //File save
     QString notesDir = QDir::currentPath() + "/notes";
