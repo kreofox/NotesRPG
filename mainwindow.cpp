@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QInputDialog>
 #include <QIcon>
+#include <QFileDialog>
 
 //#include "ui_mainwindow.h"
 
@@ -38,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
     QVBoxLayout *rightLayout = new QVBoxLayout();
     QTextEdit *editor = new QTextEdit(central);
     editor -> setPlaceholderText(" ");
-    editor -> setFont(QFont("Courier new", 12));
+    editor -> setFont(QFont("Courier new", 12)); //Font
     rightLayout -> addWidget(editor);
 
     //BUTTON
@@ -57,9 +58,11 @@ MainWindow::MainWindow(QWidget *parent)
         "}"
         );
 
+    connect(btnNew, &QPushButton::clicked, this, [this](){
+        QString filePath = QFileDialog::getOpenFileName(this, "File seelection", QDir::currentPath());
+    });
 
     //save file
-
     QPushButton *btnSave = new QPushButton(" ", this);
     btnSave->setFixedSize(45,45);
     //btnLayout->addWidget(btnSave);
@@ -72,6 +75,12 @@ MainWindow::MainWindow(QWidget *parent)
         "   text-align: center;"
         "}"
         );
+
+    connect(btnSave, &QPushButton::clicked, this,[this](){
+        QString fileSave =QFileDialog::getSaveFileName(this, "Save", QDir::currentPath());
+    });
+
+
 
     //setting buttons
     QPushButton *btnSettings = new QPushButton(" ", this);
