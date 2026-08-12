@@ -73,6 +73,19 @@ MainWindow::MainWindow(QWidget *parent)
         "}"
         );
 
+    //setting buttons
+    QPushButton *btnSettings = new QPushButton(" ", this);
+    btnSettings->setFixedSize(45,45);
+    //btnLayout->addWidget(btnSave);
+    btnSettings->setIcon(QIcon(":/img/img/settings.png"));
+    btnSettings->setIconSize(QSize(28,28));
+    btnSettings->setStyleSheet(
+        "QPushButton {"
+        "   padding: 0px;"
+        "   border: none;"
+        "   text-align: center;"
+        "}"
+        );
 
 
 
@@ -80,6 +93,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     btnLayout->addWidget(btnNew);
     btnLayout->addWidget(btnSave);
+    btnLayout->addWidget(btnSettings);
+
 
 
 
