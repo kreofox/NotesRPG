@@ -4,14 +4,13 @@
 #include "QHBoxLayout"
 #include "QVBoxLayout"
 #include "QWidget"
-#include <QFile>
-#include <QTextStream>
-#include <QMessageBox>
-#include <QListWidget>
 #include <QDir>
-#include <QInputDialog>
 #include <QIcon>
 #include <QFileDialog>
+#include <QListView>
+#include <QFileSystemModel>
+#include <QDebug>
+
 
 //#include "ui_mainwindow.h"
 
@@ -29,9 +28,16 @@ MainWindow::MainWindow(QWidget *parent)
     central->setLayout(mainLayout);
 
     //Left list notes
-    QListWidget *fileList = new QListWidget(central);
-    //fileList -> setMaximumHeight(280);
+    QListView *fileList = new QListView(central); //QListWidget
     mainLayout -> addWidget(fileList, 1);
+
+    QFileSystemModel *model = new QFileSystemModel(fileList);
+    QString path = QDir::homePath();
+    model ->setRootPath(path);
+
+    fileList->setModel(model);
+    fileList->setRootIndex(model->index(path));
+
 
 
     //Right text edit
@@ -58,8 +64,13 @@ MainWindow::MainWindow(QWidget *parent)
         "}"
         );
 
-    connect(btnNew, &QPushButton::clicked, this, [this](){
-        QString filePath = QFileDialog::getOpenFileName(this, "File seelection", QDir::currentPath());
+    connect(btnNew, &QPushButton::clicked, this, [this, model, fileList](){
+        QString dirPath = QFileDialog::getExistingDirectory(this, "Select folder", QDir::homePath());
+        if (!dirPath.isEmpty()) {
+            model->setRootPath(dirPath);
+            fileList->setRootIndex(model->index(dirPath));
+            qDebug() << "Selected folder:" << dirPath;
+        }
     });
 
     //save file
@@ -112,22 +123,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     mainLayout->addLayout(rightLayout, 3);
 
-    //File save
-    QString notesDir = QDir::currentPath() + "/notes";
-    QDir().mkpath(notesDir);
 
-    //open file
-    QString currentFile = "";
-
-    //Fun update list files left
-    auto refreshList = [=](){
-        fileList->clear();
-        QDir dir(notesDir);
-        QStringList files = dir.entryList(QStringList() << "*.txt" << "*.md", QDir::Files);
-        fileList ->addItems(files);
-    };
-
-    refreshList();
 }
 
 MainWindow::~MainWindow()
