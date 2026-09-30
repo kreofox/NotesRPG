@@ -1,22 +1,24 @@
 #include "mainwindow.h"
 #include "QTextEdit"
-#include "QPushButton"
 #include "QHBoxLayout"
 #include "QVBoxLayout"
 #include "QWidget"
 #include <QDir>
-#include <QIcon>
+#include <QFile>
+#include <QTextStream>
 #include <QFileDialog>
-#include <QListView>
-#include <QFileSystemModel>
+#include <QListWidget>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QLineEdit>
 #include <QDebug>
-
-
-//#include "ui_mainwindow.h"
+#include <memory>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-
 {
     setWindowTitle("NotesRPG");
     resize(900, 600);
@@ -27,103 +29,128 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *mainLayout = new QHBoxLayout();
     central->setLayout(mainLayout);
 
-    //Left list notes
-    QListView *fileList = new QListView(central); //QListWidget
-    mainLayout -> addWidget(fileList, 1);
+    // Left side — file list
+    QListWidget *fileList = new QListWidget(central);
+    mainLayout->addWidget(fileList, 1);
 
-    QFileSystemModel *model = new QFileSystemModel(fileList);
-    QString path = QDir::homePath();
-    model ->setRootPath(path);
-
-    fileList->setModel(model);
-    fileList->setRootIndex(model->index(path));
-
-
-
-    //Right text edit
-
+    // Right side — text editor
     QVBoxLayout *rightLayout = new QVBoxLayout();
     QTextEdit *editor = new QTextEdit(central);
-    editor -> setPlaceholderText(" ");
-    editor -> setFont(QFont("Courier new", 12)); //Font
-    rightLayout -> addWidget(editor);
+    editor->setPlaceholderText("Select a file on the left or create a new one...");
+    editor->setFont(QFont("Courier New", 12));
+    rightLayout->addWidget(editor);
+    mainLayout->addLayout(rightLayout, 3);
 
-    //BUTTON
-    //new file
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    QPushButton *btnNew = new QPushButton(" ", this);
-    btnNew->setFixedSize(45,45);
-    //btnLayout->addWidget(btnNew);
-    btnNew->setIcon(QIcon(":/img/img/folder.png"));
-    btnNew->setIconSize(QSize(28,28));
-    btnNew->setStyleSheet(
-        "QPushButton {"
-        "   padding: 0px;"
-        "   border: none;"
-        "   text-align: center;"
-        "}"
-        );
+    // Notes folder — shared_ptr so every lambda sees the same, updatable path
+    auto notesDir = std::make_shared<QString>(QDir::currentPath() + "/notes");
+    QDir().mkpath(*notesDir);
+    qDebug() << "Initial notesDir:" << *notesDir;
 
-    connect(btnNew, &QPushButton::clicked, this, [this, model, fileList](){
+    // Currently opened file
+    auto currentFile = std::make_shared<QString>("");
+
+    // Function to refresh the file list — shows folders and all files
+    auto refreshList = [=](){
+        fileList->clear();
+        QDir dir(*notesDir);
+
+        QFileInfoList entries = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot, QDir::DirsFirst | QDir::Name);
+        for (const QFileInfo &info : entries) {
+            QString displayName = info.fileName();
+            if (info.isDir())
+                displayName = "📁 " + displayName;
+            fileList->addItem(displayName);
+        }
+
+        qDebug() << "Looking in:" << dir.absolutePath();
+        qDebug() << "Found entries:" << entries.size();
+    };
+    refreshList(); // initial load
+
+    // Click on a file or folder in the list
+    connect(fileList, &QListWidget::itemClicked, this, [=](QListWidgetItem *item){
+        QString name = item->text();
+        bool isDir = name.startsWith("📁 ");
+        if (isDir)
+            name = name.mid(2).trimmed(); //Remove the prefix icon
+
+        QString fullPath = *notesDir + "/" + name;
+
+        if (isDir) {
+            // Open the folder
+            *notesDir = fullPath;
+            refreshList();
+        } else {
+            // Open the file in an editor
+            QFile file(fullPath);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                editor->setText(in.readAll());
+                file.close();
+                *currentFile = fullPath;
+            } else {
+                QMessageBox::warning(this, "Error", "Could not open file: " + name);
+            }
+        }
+    });
+
+    // === File menu ===
+    QMenu *fileMenu = menuBar()->addMenu("&File");
+
+    QAction *newAction = fileMenu->addAction("New File");
+    newAction->setShortcut(QKeySequence::New);
+    connect(newAction, &QAction::triggered, this, [=](){
+        bool ok;
+        QString name = QInputDialog::getText(this, "New File", "File name:", QLineEdit::Normal, "", &ok);
+        if (ok && !name.isEmpty()) {
+            if (!name.endsWith(".txt") && !name.endsWith(".md"))
+                name += ".txt";
+            QString filePath = *notesDir + "/" + name;
+            QFile file(filePath);
+            if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                file.close();
+                *currentFile = filePath;
+                editor->clear();
+                refreshList();
+            }
+        }
+    });
+
+
+    QAction *openFolderAction = fileMenu->addAction("Open Folder...");
+    connect(openFolderAction, &QAction::triggered, this, [=](){
         QString dirPath = QFileDialog::getExistingDirectory(this, "Select folder", QDir::homePath());
         if (!dirPath.isEmpty()) {
-            model->setRootPath(dirPath);
-            fileList->setRootIndex(model->index(dirPath));
+            *notesDir = dirPath;
+            refreshList();
             qDebug() << "Selected folder:" << dirPath;
         }
     });
 
-    //save file
-    QPushButton *btnSave = new QPushButton(" ", this);
-    btnSave->setFixedSize(45,45);
-    //btnLayout->addWidget(btnSave);
-    btnSave->setIcon(QIcon(":/img/img/save.png"));
-    btnSave->setIconSize(QSize(28,28));
-    btnSave->setStyleSheet(
-        "QPushButton {"
-        "   padding: 0px;"
-        "   border: none;"
-        "   text-align: center;"
-        "}"
-        );
-
-    connect(btnSave, &QPushButton::clicked, this,[this](){
-        QString fileSave =QFileDialog::getSaveFileName(this, "Save", QDir::currentPath());
+    QAction *saveAction = fileMenu->addAction("Save");
+    saveAction->setShortcut(QKeySequence::Save);
+    connect(saveAction, &QAction::triggered, this, [=](){
+        if (currentFile->isEmpty()) {
+            QString filePath = QFileDialog::getSaveFileName(this, "Save", *notesDir, "Text files (*.txt *.md)");
+            if (filePath.isEmpty()) return;
+            *currentFile = filePath;
+        }
+        QFile file(*currentFile);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << editor->toPlainText();
+            file.close();
+            refreshList();
+        } else {
+            QMessageBox::warning(this, "Error", "Could not save file.");
+        }
     });
 
+    fileMenu->addSeparator();
 
-
-    //setting buttons
-    QPushButton *btnSettings = new QPushButton(" ", this);
-    btnSettings->setFixedSize(45,45);
-    //btnLayout->addWidget(btnSave);
-    btnSettings->setIcon(QIcon(":/img/img/settings.png"));
-    btnSettings->setIconSize(QSize(28,28));
-    btnSettings->setStyleSheet(
-        "QPushButton {"
-        "   padding: 0px;"
-        "   border: none;"
-        "   text-align: center;"
-        "}"
-        );
-
-
-
-
-
-    btnLayout->addWidget(btnNew);
-    btnLayout->addWidget(btnSave);
-    btnLayout->addWidget(btnSettings);
-
-
-
-
-
-    rightLayout->addLayout(btnLayout);
-
-    mainLayout->addLayout(rightLayout, 3);
-
-
+    QAction *exitAction = fileMenu->addAction("Exit");
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
 }
 
 MainWindow::~MainWindow()
