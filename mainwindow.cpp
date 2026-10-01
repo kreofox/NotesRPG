@@ -16,6 +16,7 @@
 #include <QLineEdit>
 #include <QDebug>
 #include <memory>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -36,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Right side — text editor
     QVBoxLayout *rightLayout = new QVBoxLayout();
     QTextEdit *editor = new QTextEdit(central);
-    editor->setPlaceholderText("Select a file on the left or create a new one...");
+    editor->setPlaceholderText(" ");
     editor->setFont(QFont("Courier New", 12));
     rightLayout->addWidget(editor);
     mainLayout->addLayout(rightLayout, 3);
@@ -96,6 +97,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // === File menu ===
     QMenu *fileMenu = menuBar()->addMenu("&File");
+    QMenu *aboutMenu = menuBar()->addMenu("&About");
 
     QAction *newAction = fileMenu->addAction("New File");
     newAction->setShortcut(QKeySequence::New);
@@ -144,6 +146,41 @@ MainWindow::MainWindow(QWidget *parent)
         } else {
             QMessageBox::warning(this, "Error", "Could not save file.");
         }
+    });
+    QAction *aboutAction = aboutMenu->addAction("&About");
+    connect(aboutAction, &QAction::triggered, this, [this](){
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("About Kreofox");
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setText(
+            "<h3>MIT License</h3>"
+            "<p>Copyright (c) 2026 Kreofox</p>"
+            "<p>Permission is hereby granted, free of charge, to any person obtaining a copy "
+            "of this software and associated documentation files (the \"Software\"), to deal "
+            "in the Software without restriction, including without limitation the rights "
+            "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell "
+            "copies of the Software, and to permit persons to whom the Software is "
+            "furnished to do so, subject to the following conditions:</p>"
+            "<p>The above copyright notice and this permission notice shall be included in all "
+            "copies or substantial portions of the Software.</p>"
+            "<p>THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR "
+            "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, "
+            "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE "
+            "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER "
+            "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, "
+            "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE "
+            "SOFTWARE.</p>"
+            "<p>Copyright © 2026. All rights reserved.</p>"
+            "<p>GITHUB: <a href=\"https://github.com/kreofox\">github.com/kreofox</a></p>"
+            );
+
+        QLabel *label = msgBox.findChild<QLabel*>("qt_msgbox_label");
+        if (label) {
+            label->setOpenExternalLinks(true);
+            label->setTextInteractionFlags(Qt::TextBrowserInteraction);
+        }
+
+        msgBox.exec();
     });
 
     fileMenu->addSeparator();
