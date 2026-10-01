@@ -7,7 +7,6 @@
 #include <QFile>
 #include <QTextStream>
 #include <QFileDialog>
-#include <QListWidget>
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
@@ -17,6 +16,9 @@
 #include <QDebug>
 #include <memory>
 #include <QLabel>
+#include <QTreeView>
+#include <QFileSystemModel>
+#include <QHeaderView>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,9 +32,9 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *mainLayout = new QHBoxLayout();
     central->setLayout(mainLayout);
 
-    // Left side — file list
-    QListWidget *fileList = new QListWidget(central);
-    mainLayout->addWidget(fileList, 1);
+    // Left side — file tree (VS Code style, with expand/collapse animation)
+    QTreeView *fileTree = new QTreeView(central);
+    mainLayout->addWidget(fileTree, 1);
 
     // Right side — text editor
     QVBoxLayout *rightLayout = new QVBoxLayout();
@@ -50,48 +52,47 @@ MainWindow::MainWindow(QWidget *parent)
     // Currently opened file
     auto currentFile = std::make_shared<QString>("");
 
-    // Function to refresh the file list — shows folders and all files
-    auto refreshList = [=](){
-        fileList->clear();
-        QDir dir(*notesDir);
+    // File system model — shows folders and .txt/.md files, updates itself automatically
+    QFileSystemModel *model = new QFileSystemModel(fileTree);
+    model->setRootPath(*notesDir);
+    model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
 
-        QFileInfoList entries = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot, QDir::DirsFirst | QDir::Name);
-        for (const QFileInfo &info : entries) {
-            QString displayName = info.fileName();
-            if (info.isDir())
-                displayName = "📁 " + displayName;
-            fileList->addItem(displayName);
-        }
+    fileTree->setModel(model);
+    fileTree->setRootIndex(model->index(*notesDir));
 
-        qDebug() << "Looking in:" << dir.absolutePath();
-        qDebug() << "Found entries:" << entries.size();
+    fileTree->hideColumn(1);
+    fileTree->hideColumn(2);
+    fileTree->hideColumn(3);
+    fileTree->header()->hide();
+
+    fileTree->setAnimated(true);
+
+    // Helper to point the tree at a (possibly new) folder
+    auto setRootFolder = [=](const QString &dirPath){
+        *notesDir = dirPath;
+        model->setRootPath(dirPath);
+        fileTree->setRootIndex(model->index(dirPath));
     };
-    refreshList(); // initial load
 
-    // Click on a file or folder in the list
-    connect(fileList, &QListWidget::itemClicked, this, [=](QListWidgetItem *item){
-        QString name = item->text();
-        bool isDir = name.startsWith("📁 ");
-        if (isDir)
-            name = name.mid(2).trimmed(); //Remove the prefix icon
-
-        QString fullPath = *notesDir + "/" + name;
-
-        if (isDir) {
-            // Open the folder
-            *notesDir = fullPath;
-            refreshList();
-        } else {
-            // Open the file in an editor
-            QFile file(fullPath);
+    // Click on a file — open it. Click on a folder — expand/collapse with animation.
+    connect(fileTree, &QTreeView::clicked, this, [=](const QModelIndex &index){
+        QString path = model->filePath(index);
+        QFileInfo info(path);
+        if (info.isFile()) {
+            QFile file(path);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QTextStream in(&file);
                 editor->setText(in.readAll());
                 file.close();
-                *currentFile = fullPath;
+                *currentFile = path;
             } else {
-                QMessageBox::warning(this, "Error", "Could not open file: " + name);
+                QMessageBox::warning(this, "Error", "Could not open file: " + info.fileName());
             }
+        } else {
+            if (fileTree->isExpanded(index))
+                fileTree->collapse(index);
+            else
+                fileTree->expand(index);
         }
     });
 
@@ -107,24 +108,29 @@ MainWindow::MainWindow(QWidget *parent)
         if (ok && !name.isEmpty()) {
             if (!name.endsWith(".txt") && !name.endsWith(".md"))
                 name += ".txt";
-            QString filePath = *notesDir + "/" + name;
+
+            QModelIndex current = fileTree->currentIndex();
+            QString targetDir = *notesDir;
+            if (current.isValid()) {
+                QFileInfo info(model->filePath(current));
+                targetDir = info.isDir() ? info.filePath() : info.absolutePath();
+            }
+
+            QString filePath = targetDir + "/" + name;
             QFile file(filePath);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
                 file.close();
                 *currentFile = filePath;
                 editor->clear();
-                refreshList();
             }
         }
     });
-
 
     QAction *openFolderAction = fileMenu->addAction("Open Folder...");
     connect(openFolderAction, &QAction::triggered, this, [=](){
         QString dirPath = QFileDialog::getExistingDirectory(this, "Select folder", QDir::homePath());
         if (!dirPath.isEmpty()) {
-            *notesDir = dirPath;
-            refreshList();
+            setRootFolder(dirPath);
             qDebug() << "Selected folder:" << dirPath;
         }
     });
@@ -142,11 +148,11 @@ MainWindow::MainWindow(QWidget *parent)
             QTextStream out(&file);
             out << editor->toPlainText();
             file.close();
-            refreshList();
         } else {
             QMessageBox::warning(this, "Error", "Could not save file.");
         }
     });
+
     QAction *aboutAction = aboutMenu->addAction("&About");
     connect(aboutAction, &QAction::triggered, this, [this](){
         QMessageBox msgBox(this);
