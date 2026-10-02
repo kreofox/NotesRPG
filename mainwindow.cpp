@@ -19,6 +19,9 @@
 #include <QTreeView>
 #include <QFileSystemModel>
 #include <QHeaderView>
+#include <QStackedWidget>
+#include <QPixmap>
+#include <QMovie>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -36,12 +39,23 @@ MainWindow::MainWindow(QWidget *parent)
     QTreeView *fileTree = new QTreeView(central);
     mainLayout->addWidget(fileTree, 1);
 
-    // Right side — text editor
+    // Right side — stacked: text editor OR image preview
     QVBoxLayout *rightLayout = new QVBoxLayout();
+
+    QStackedWidget *rightStack = new QStackedWidget(central);
+
     QTextEdit *editor = new QTextEdit(central);
     editor->setPlaceholderText(" ");
     editor->setFont(QFont("Courier New", 12));
-    rightLayout->addWidget(editor);
+
+    QLabel *imageLabel = new QLabel(central);
+    imageLabel->setAlignment(Qt::AlignCenter);
+    imageLabel->setScaledContents(false);
+
+    rightStack->addWidget(editor);      // index 0 — текст
+    rightStack->addWidget(imageLabel);  // index 1 — картинка
+
+    rightLayout->addWidget(rightStack);
     mainLayout->addLayout(rightLayout, 3);
 
     // Notes folder — shared_ptr so every lambda sees the same, updatable path
@@ -52,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Currently opened file
     auto currentFile = std::make_shared<QString>("");
 
-    // File system model — shows folders and .txt/.md files, updates itself automatically
+    // File system model — shows all folders and files, updates itself automatically
     QFileSystemModel *model = new QFileSystemModel(fileTree);
     model->setRootPath(*notesDir);
     model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot);
@@ -74,19 +88,50 @@ MainWindow::MainWindow(QWidget *parent)
         fileTree->setRootIndex(model->index(dirPath));
     };
 
-    // Click on a file — open it. Click on a folder — expand/collapse with animation.
+    // Click on a file — show it (text or image). Click on a folder — expand/collapse with animation.
     connect(fileTree, &QTreeView::clicked, this, [=](const QModelIndex &index){
         QString path = model->filePath(index);
         QFileInfo info(path);
+
         if (info.isFile()) {
-            QFile file(path);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                QTextStream in(&file);
-                editor->setText(in.readAll());
-                file.close();
-                *currentFile = path;
+            QString ext = info.suffix().toLower();
+            static const QStringList imageExts = {"png", "jpg", "jpeg", "bmp", "webp", "gif"};
+
+            if (imageExts.contains(ext)) {
+                // Освобождаем предыдущий QMovie, если был
+                if (imageLabel->movie()) {
+                    imageLabel->movie()->deleteLater();
+                    imageLabel->setMovie(nullptr);
+                }
+
+                if (ext == "gif") {
+                    QMovie *movie = new QMovie(path, QByteArray(), imageLabel);
+                    imageLabel->setMovie(movie);
+                    movie->start();
+                } else {
+                    QPixmap pix(path);
+                    if (!pix.isNull()) {
+                        imageLabel->setPixmap(pix.scaled(
+                            imageLabel->size(),
+                            Qt::KeepAspectRatio,
+                            Qt::SmoothTransformation
+                            ));
+                    } else {
+                        imageLabel->setText("Cannot preview: " + info.fileName());
+                    }
+                }
+                rightStack->setCurrentWidget(imageLabel);
             } else {
-                QMessageBox::warning(this, "Error", "Could not open file: " + info.fileName());
+                QFile file(path);
+                if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                    QTextStream in(&file);
+                    editor->setText(in.readAll());
+                    file.close();
+                    *currentFile = path;
+                } else {
+                    QMessageBox::warning(this, "Error", "Could not open file: " + info.fileName());
+                }
+                rightStack->setCurrentWidget(editor);
             }
         } else {
             if (fileTree->isExpanded(index))
@@ -122,6 +167,7 @@ MainWindow::MainWindow(QWidget *parent)
                 file.close();
                 *currentFile = filePath;
                 editor->clear();
+                rightStack->setCurrentWidget(editor);
             }
         }
     });
